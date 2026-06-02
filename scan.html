@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>攀升扫码 - 设备管理系统</title>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0A1428;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .container {
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+    }
+    .logo { font-size: 32px; margin-bottom: 8px; }
+    .title { font-size: 18px; color: #00D4FF; margin-bottom: 4px; font-weight: 600; }
+    .subtitle { font-size: 12px; color: #6B7FA3; margin-bottom: 24px; }
+
+    .scanner-box {
+      background: rgba(0, 212, 255, 0.05);
+      border: 2px solid rgba(0, 212, 255, 0.2);
+      border-radius: 16px;
+      overflow: hidden;
+      position: relative;
+      margin-bottom: 16px;
+    }
+    #reader {
+      width: 100%;
+      min-height: 300px;
+    }
+    #reader video {
+      border-radius: 16px;
+    }
+    /* 隐藏 html5-qrcode 默认 UI */
+    #reader__scan_region { border: none !important; }
+    #reader__dashboard_section { padding: 0 !important; }
+    #reader__dashboard_section_csr { padding: 0 !important; }
+    #reader__dashboard_section_csr span { display: none !important; }
+    #reader__header_message { display: none !important; }
+
+    .scan-overlay {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 200px; height: 200px;
+      border: 3px solid #00D4FF;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(0,212,255,0.3), inset 0 0 20px rgba(0,212,255,0.1);
+      pointer-events: none;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 20px rgba(0,212,255,0.3), inset 0 0 20px rgba(0,212,255,0.1); }
+      50% { box-shadow: 0 0 40px rgba(0,212,255,0.5), inset 0 0 30px rgba(0,212,255,0.2); }
+    }
+
+    .result-box {
+      background: rgba(0, 212, 255, 0.08);
+      border: 1px solid rgba(0, 212, 255, 0.3);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      word-break: break-all;
+    }
+    .result-label { font-size: 12px; color: #6B7FA3; margin-bottom: 4px; }
+    .result-text { font-size: 14px; color: #00D4FF; }
+
+    .local-link {
+      background: rgba(0, 212, 255, 0.1);
+      border: 1px solid rgba(0, 212, 255, 0.3);
+      border-radius: 10px;
+      padding: 10px 16px;
+      margin-bottom: 16px;
+      font-size: 12px;
+      color: #6B7FA3;
+    }
+    .local-link a {
+      color: #00D4FF;
+      text-decoration: none;
+      word-break: break-all;
+    }
+
+    .status {
+      font-size: 13px;
+      padding: 10px;
+      border-radius: 10px;
+      margin-bottom: 16px;
+    }
+    .status.info { background: rgba(0, 212, 255, 0.1); border: 1px solid rgba(0, 212, 255, 0.2); }
+    .status.success { background: rgba(0, 255, 100, 0.1); border: 1px solid rgba(0, 255, 100, 0.3); color: #00FF64; }
+    .status.error { background: rgba(255, 71, 87, 0.1); border: 1px solid rgba(255, 71, 87, 0.3); color: #FF6B6B; }
+
+    .btn {
+      display: inline-block;
+      padding: 12px 24px;
+      border-radius: 10px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #00D4FF, #0099CC);
+      color: #0A1428;
+      width: 100%;
+    }
+    .btn-primary:active { transform: scale(0.97); opacity: 0.9; }
+
+    .btn-photo {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #fff;
+      margin-top: 8px;
+      width: 100%;
+    }
+
+    .settings-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .setting-item {
+      flex: 1;
+      min-width: 80px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 8px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 11px;
+      color: #6B7FA3;
+      transition: all 0.2s;
+    }
+    .setting-item.active {
+      border-color: #00D4FF;
+      color: #00D4FF;
+      background: rgba(0, 212, 255, 0.1);
+    }
+
+    .hidden { display: none !important; }
+    .mt-8 { margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">📱</div>
+    <div class="title">攀升扫码入口</div>
+    <div class="subtitle">扫描设备二维码，自动跳转系统</div>
+
+    <!-- 系统地址设置 -->
+    <div class="settings-bar" id="settingsBar">
+      <div class="setting-item active" onclick="setSysIdx(0)">
+        1号机<br><span style="font-size:10px">10.3.14.161</span>
+      </div>
+      <div class="setting-item" onclick="setSysIdx(1)">
+        2号机<br><span style="font-size:10px">10.3.14.162</span>
+      </div>
+      <div class="setting-item" onclick="setCustomSys()" id="customSetting">
+        自定义<br><span style="font-size:10px">其他地址</span>
+      </div>
+    </div>
+
+    <!-- 当前系统地址提示 -->
+    <div class="local-link" id="sysInfo">
+      目标系统：<a id="sysUrl" href="http://10.3.14.161:5173" target="_blank">http://10.3.14.161:5173</a>
+    </div>
+
+    <!-- 扫码区域 -->
+    <div class="scanner-box" id="scannerBox">
+      <div id="reader"></div>
+      <div class="scan-overlay"></div>
+    </div>
+
+    <!-- 状态提示 -->
+    <div class="status info" id="statusBox">
+      🎯 将二维码对准方框，自动识别
+    </div>
+
+    <!-- 扫码结果 -->
+    <div class="result-box hidden" id="resultBox">
+      <div class="result-label">扫描结果</div>
+      <div class="result-text" id="resultText"></div>
+      <button class="btn btn-primary mt-8" onclick="openResult()" id="openBtn">
+        🚀 打开系统处理
+      </button>
+    </div>
+
+    <!-- 备用：拍照扫码 -->
+    <button class="btn btn-photo" onclick="photoScan()">
+      📷 拍照选图扫码（备用）
+    </button>
+    <input type="file" accept="image/*" id="photoInput" class="hidden" onchange="handlePhoto(event)">
+
+    <div style="margin-top: 24px; font-size: 10px; color: #3A4A6E;">
+      v1.0 · 攀升工厂设备管理系统
+    </div>
+  </div>
+
+  <script>
+    // ===== 系统地址配置 =====
+    const SYS_CONFIGS = [
+      { name: '1号机', ip: '10.3.14.161', port: '5173' },
+      { name: '2号机', ip: '10.3.14.162', port: '5173' },
+    ];
+    let currentSysIdx = parseInt(localStorage.getItem('pansheng_scan_sys_idx') || '0');
+    let customIp = localStorage.getItem('pansheng_scan_custom_ip') || '';
+    let customPort = localStorage.getItem('pansheng_scan_custom_port') || '5173';
+
+    function getReturnUrl() {
+      const params = new URLSearchParams(window.location.search);
+      const returnUrl = params.get('return');
+      if (returnUrl) return returnUrl;
+      return getSysUrl() + '/inspections/check-in';
+    }
+
+    function extractToken(text) {
+      try {
+        const url = new URL(text);
+        return url.searchParams.get('token') || text;
+      } catch {
+        return text;
+      }
+    }
+
+    function getSysUrl() {
+      if (currentSysIdx === -1) {
+        return `http://${customIp}:${customPort}`;
+      }
+      const cfg = SYS_CONFIGS[currentSysIdx] || SYS_CONFIGS[0];
+      return `http://${cfg.ip}:${cfg.port}`;
+    }
+
+    function setSysIdx(idx) {
+      currentSysIdx = idx;
+      localStorage.setItem('pansheng_scan_sys_idx', idx.toString());
+      updateSysUI();
+      restartScanner();
+    }
+
+    function setCustomSys() {
+      const ip = prompt('请输入系统IP地址（如 192.168.1.100）：', customIp);
+      if (!ip) return;
+      const port = prompt('请输入端口号（默认 5173）：', customPort);
+      customIp = ip;
+      customPort = port || '5173';
+      localStorage.setItem('pansheng_scan_custom_ip', customIp);
+      localStorage.setItem('pansheng_scan_custom_port', customPort);
+      currentSysIdx = -1;
+      localStorage.setItem('pansheng_scan_sys_idx', '-1');
+      updateSysUI();
+      restartScanner();
+    }
+
+    function updateSysUI() {
+      const url = getSysUrl();
+      document.getElementById('sysUrl').textContent = url;
+      document.getElementById('sysUrl').href = url;
+
+      const items = document.querySelectorAll('.setting-item');
+      items.forEach((item, i) => {
+        if (i === 2) {
+          // Custom button
+          if (currentSysIdx === -1) {
+            item.classList.add('active');
+            item.innerHTML = '自定义<br><span style="font-size:10px">' + customIp + '</span>';
+          } else {
+            item.classList.remove('active');
+            item.innerHTML = '自定义<br><span style="font-size:10px">其他地址</span>';
+          }
+        } else {
+          item.classList.toggle('active', i === currentSysIdx);
+        }
+      });
+    }
+
+    // ===== 扫码逻辑 =====
+    let html5QrCode = null;
+    let lastScanTime = 0;
+    const SCAN_COOLDOWN = 3000; // 3秒内不重复扫
+
+    function status(msg, type) {
+      const box = document.getElementById('statusBox');
+      box.textContent = msg;
+      box.className = 'status ' + (type || 'info');
+    }
+
+    async function startScanner() {
+      const readerEl = document.getElementById('reader');
+
+      if (html5QrCode) {
+        try { await html5QrCode.stop(); } catch(e) {}
+        html5QrCode = null;
+      }
+
+      // 清空 reader 区域（html5-qrcode 会重新渲染）
+      readerEl.innerHTML = '';
+
+      html5QrCode = new Html5Qrcode('reader');
+      const config = {
+        fps: 10,
+        qrbox: { width: 200, height: 200 },
+        aspectRatio: 1,
+      };
+
+      try {
+        await html5QrCode.start(
+          { facingMode: 'environment' },
+          config,
+          onScanSuccess,
+          onScanError
+        );
+        status('🎯 将二维码对准方框，自动识别', 'info');
+        document.getElementById('resultBox').classList.add('hidden');
+      } catch (err) {
+        console.warn('Camera start failed:', err);
+        const errMsg = err.toString();
+
+        if (errMsg.includes('NotAllowedError') || errMsg.includes('Permission')) {
+          status('❌ 摄像头权限被拒绝，请在浏览器设置中允许摄像头', 'error');
+        } else if (errMsg.includes('NotFoundError') || errMsg.includes('DevicesNotFound')) {
+          status('❌ 未检测到摄像头，请确认设备有摄像头', 'error');
+        } else {
+          status('⚠️ 摄像头启动失败：' + errMsg.substring(0, 60) + '。请尝试拍照扫码。', 'error');
+        }
+        // 出错时也保留拍照扫码功能
+      }
+    }
+
+    function onScanSuccess(decodedText, decodedResult) {
+      const now = Date.now();
+      if (now - lastScanTime < SCAN_COOLDOWN) return;
+      lastScanTime = now;
+
+      // 停止扫码，显示结果
+      if (html5QrCode) {
+        html5QrCode.pause();
+      }
+
+      document.getElementById('resultText').textContent = decodedText;
+      document.getElementById('resultBox').classList.remove('hidden');
+      status(`✅ 扫描成功！`, 'success');
+
+      // 自动跳转：提取 token 并跳转到返回地址
+      const token = extractToken(decodedText);
+      const targetUrl = getReturnUrl() + '?token=' + encodeURIComponent(token || decodedText);
+      status(`🚀 正在跳转到系统...`, 'success');
+
+      setTimeout(() => {
+        window.location.href = targetUrl;
+      }, 800);
+    }
+
+    function onScanError(errorMessage) {
+      // 持续扫描中，忽略错误（html5-qrcode 会频繁报找不到二维码的错误）
+    }
+
+    function openResult() {
+      const text = document.getElementById('resultText').textContent;
+      if (!text) return;
+      const token = extractToken(text);
+      const targetUrl = getReturnUrl() + '?token=' + encodeURIComponent(token || text);
+      window.open(targetUrl, '_blank');
+    }
+
+    async function restartScanner() {
+      // 隐藏结果显示
+      document.getElementById('resultBox').classList.add('hidden');
+      lastScanTime = 0;
+      await startScanner();
+    }
+
+    // ===== 拍照扫码（备用） =====
+    function photoScan() {
+      document.getElementById('photoInput').click();
+    }
+
+    async function handlePhoto(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      status('🔍 正在识别二维码...', 'info');
+
+      try {
+        // 读取图片文件
+        const img = await createImageBitmap(file);
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+        // 用 jsQR 解码
+        const code = jsQR(imageData.data, canvas.width, canvas.height);
+        if (code) {
+          document.getElementById('resultText').textContent = code.data;
+          document.getElementById('resultBox').classList.remove('hidden');
+          status(`✅ 识别成功！`, 'success');
+
+          // 自动跳转
+          setTimeout(() => {
+            const token = extractToken(code.data);
+            window.location.href = getReturnUrl() + '?token=' + encodeURIComponent(token || code.data);
+          }, 800);
+        } else {
+          status('❌ 未识别到二维码，请重新拍照', 'error');
+        }
+      } catch (err) {
+        status('❌ 图片识别失败：' + err.message, 'error');
+      }
+
+      event.target.value = '';
+    }
+
+    // ===== 初始化 =====
+    updateSysUI();
+    startScanner();
+
+    // 页面不可见时暂停扫码，节省电量
+    document.addEventListener('visibilitychange', () => {
+      if (!html5QrCode) return;
+      if (document.hidden) {
+        html5QrCode.pause();
+      } else {
+        html5QrCode.resume();
+      }
+    });
+  </script>
+</body>
+</html>
