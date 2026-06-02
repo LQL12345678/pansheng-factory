@@ -190,30 +190,12 @@
   </script>
 
   <div class="container" id="mainApp" style="display:none">
-    <div class="logo">📱</div>
-    <div class="title">攀升扫码入口</div>
-    <div class="subtitle">扫描设备二维码，自动跳转系统</div>
+    <div class="logo">📷</div>
+    <div class="title">攀升扫码</div>
+    <div class="subtitle">扫描二维码自动跳转系统</div>
 
-    <!-- 系统地址设置 -->
-    <div class="settings-bar" id="settingsBar">
-      <div class="setting-item active" onclick="setSysIdx(0)">
-        1号机<br><span style="font-size:10px">10.3.14.161</span>
-      </div>
-      <div class="setting-item" onclick="setSysIdx(1)">
-        2号机<br><span style="font-size:10px">10.3.14.162</span>
-      </div>
-      <div class="setting-item" onclick="setCustomSys()" id="customSetting">
-        自定义<br><span style="font-size:10px">其他地址</span>
-      </div>
-    </div>
-
-    <!-- 当前系统地址提示 -->
-    <div class="local-link" id="sysInfo">
-      目标系统：<a id="sysUrl" href="http://10.3.14.161:5173" target="_blank">http://10.3.14.161:5173</a>
-    </div>
-
-    <!-- 扫码区域 -->
-    <div class="scanner-box" id="scannerBox">
+    <!-- 扫码区域（放在最上面） -->
+    <div class="scanner-box" id="scannerBox" style="margin-bottom:12px;">
       <div id="reader"></div>
       <div class="scan-overlay"></div>
       <button class="btn btn-primary" id="startBtn" onclick="startCamera()">
@@ -223,7 +205,7 @@
 
     <!-- 状态提示 -->
     <div class="status info" id="statusBox">
-      🎯 将二维码对准方框，自动识别
+      📷 请点击上方按钮开始扫码
     </div>
 
     <!-- 扫码结果 -->
@@ -247,20 +229,9 @@
   </div>
 
   <script>
-    // ===== 系统地址配置 =====
-    const SYS_CONFIGS = [
-      { name: '1号机', ip: '10.3.14.161', port: '5173' },
-      { name: '2号机', ip: '10.3.14.162', port: '5173' },
-    ];
-    let currentSysIdx = parseInt(localStorage.getItem('pansheng_scan_sys_idx') || '0');
-    let customIp = localStorage.getItem('pansheng_scan_custom_ip') || '';
-    let customPort = localStorage.getItem('pansheng_scan_custom_port') || '5173';
-
     function getReturnUrl() {
       const params = new URLSearchParams(window.location.search);
-      const returnUrl = params.get('return');
-      if (returnUrl) return returnUrl;
-      return getSysUrl() + '/inspections/check-in';
+      return params.get('return') || (window.location.origin + '/inspections/check-in');
     }
 
     function extractToken(text) {
@@ -270,57 +241,6 @@
       } catch {
         return text;
       }
-    }
-
-    function getSysUrl() {
-      if (currentSysIdx === -1) {
-        return `http://${customIp}:${customPort}`;
-      }
-      const cfg = SYS_CONFIGS[currentSysIdx] || SYS_CONFIGS[0];
-      return `http://${cfg.ip}:${cfg.port}`;
-    }
-
-    function setSysIdx(idx) {
-      currentSysIdx = idx;
-      localStorage.setItem('pansheng_scan_sys_idx', idx.toString());
-      updateSysUI();
-      restartScanner();
-    }
-
-    function setCustomSys() {
-      const ip = prompt('请输入系统IP地址（如 192.168.1.100）：', customIp);
-      if (!ip) return;
-      const port = prompt('请输入端口号（默认 5173）：', customPort);
-      customIp = ip;
-      customPort = port || '5173';
-      localStorage.setItem('pansheng_scan_custom_ip', customIp);
-      localStorage.setItem('pansheng_scan_custom_port', customPort);
-      currentSysIdx = -1;
-      localStorage.setItem('pansheng_scan_sys_idx', '-1');
-      updateSysUI();
-      restartScanner();
-    }
-
-    function updateSysUI() {
-      const url = getSysUrl();
-      document.getElementById('sysUrl').textContent = url;
-      document.getElementById('sysUrl').href = url;
-
-      const items = document.querySelectorAll('.setting-item');
-      items.forEach((item, i) => {
-        if (i === 2) {
-          // Custom button
-          if (currentSysIdx === -1) {
-            item.classList.add('active');
-            item.innerHTML = '自定义<br><span style="font-size:10px">' + customIp + '</span>';
-          } else {
-            item.classList.remove('active');
-            item.innerHTML = '自定义<br><span style="font-size:10px">其他地址</span>';
-          }
-        } else {
-          item.classList.toggle('active', i === currentSysIdx);
-        }
-      });
     }
 
     // ===== 扫码逻辑 =====
@@ -463,12 +383,9 @@
     }
 
     // ===== 初始化 =====
-    updateSysUI();
-    
-    // 显示主界面，但不自动开摄像头
     document.getElementById('loadingHint').style.display = 'none';
     document.getElementById('mainApp').style.display = '';
-    status('📷 请点击下方按钮开始扫码', 'info');
+    status('📷 请点击上方按钮开始扫码', 'info');
 
     // ===== 用户点击后开启摄像头 =====
     async function startCamera() {
