@@ -297,23 +297,22 @@
       if (now - lastScanTime < SCAN_COOLDOWN) return;
       lastScanTime = now;
 
-      // 停止扫码，显示结果
       if (html5QrCode) {
         html5QrCode.pause();
       }
 
-      document.getElementById('resultText').textContent = decodedText;
-      document.getElementById('resultBox').classList.remove('hidden');
-      status(`✅ 扫描成功！`, 'success');
-
-      // 自动跳转：提取 token 并跳转到返回地址
       const token = extractToken(decodedText);
-      const targetUrl = getReturnUrl() + '?token=' + encodeURIComponent(token || decodedText);
-      status(`🚀 正在跳转到系统...`, 'success');
+      status(`✅ 扫描成功！正在返回系统...`, 'success');
 
-      setTimeout(() => {
-        window.location.href = targetUrl;
-      }, 800);
+      // postMessage 传回本地系统
+      if (window.opener) {
+        window.opener.postMessage({ type: 'scan-result', token: token || decodedText, raw: decodedText }, '*');
+        setTimeout(() => window.close(), 500);
+      } else {
+        // 兜底：直接跳转
+        const targetUrl = getReturnUrl() + '?token=' + encodeURIComponent(token || decodedText);
+        setTimeout(() => { window.location.href = targetUrl; }, 500);
+      }
     }
 
     function onScanError(errorMessage) {
