@@ -129,6 +129,13 @@
       width: 100%;
     }
     .btn-primary:active { transform: scale(0.97); opacity: 0.9; }
+    #startBtn {
+      width: 80%;
+      margin: 16px auto;
+      display: block;
+      font-size: 18px;
+      padding: 16px;
+    }
 
     .btn-photo {
       background: rgba(255,255,255,0.05);
@@ -209,6 +216,9 @@
     <div class="scanner-box" id="scannerBox">
       <div id="reader"></div>
       <div class="scan-overlay"></div>
+      <button class="btn btn-primary" id="startBtn" onclick="startCamera()">
+        📷 点击开始扫码
+      </button>
     </div>
 
     <!-- 状态提示 -->
@@ -455,11 +465,16 @@
     // ===== 初始化 =====
     updateSysUI();
     
-    // 显示主界面
+    // 显示主界面，但不自动开摄像头
     document.getElementById('loadingHint').style.display = 'none';
     document.getElementById('mainApp').style.display = '';
-    
-    startScanner();
+    status('📷 请点击下方按钮开始扫码', 'info');
+
+    // ===== 用户点击后开启摄像头 =====
+    async function startCamera() {
+      document.getElementById('startBtn').style.display = 'none';
+      await startScanner();
+    }
 
     // 页面不可见时暂停扫码，节省电量
     document.addEventListener('visibilitychange', () => {
