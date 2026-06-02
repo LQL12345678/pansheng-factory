@@ -8,6 +8,15 @@
   <title>攀升扫码 - 设备管理系统</title>
   <script src="jsQR.js"></script>
   <script src="html5-qrcode.min.js"></script>
+  <script>
+    // 本地加载失败时回退到 CDN
+    if (typeof jsQR === 'undefined') {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"><\/script>');
+    }
+    if (typeof Html5Qrcode === 'undefined') {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"><\/script>');
+    }
+  </script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -159,7 +168,21 @@
   </style>
 </head>
 <body>
-  <div class="container">
+  <!-- 页面加载提示 -->
+  <div id="loadingHint" style="position:fixed;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;background:#0A1428;z-index:9999;flex-direction:column;">
+    <div style="font-size:48px;margin-bottom:16px;">📱</div>
+    <div style="font-size:16px;color:#00D4FF;">攀升扫码 · 加载中...</div>
+    <div style="font-size:11px;color:#6B7FA3;margin-top:8px;" id="loadStatus"></div>
+  </div>
+  <script>
+    document.getElementById('loadStatus').textContent = '正在加载扫码引擎...';
+    window.onerror = function(msg) {
+      document.getElementById('loadStatus').textContent = '加载失败: ' + msg.substring(0, 60);
+      document.getElementById('loadStatus').style.color = '#FF6B6B';
+    };
+  </script>
+
+  <div class="container" id="mainApp" style="display:none">
     <div class="logo">📱</div>
     <div class="title">攀升扫码入口</div>
     <div class="subtitle">扫描设备二维码，自动跳转系统</div>
@@ -431,6 +454,11 @@
 
     // ===== 初始化 =====
     updateSysUI();
+    
+    // 显示主界面
+    document.getElementById('loadingHint').style.display = 'none';
+    document.getElementById('mainApp').style.display = '';
+    
     startScanner();
 
     // 页面不可见时暂停扫码，节省电量
